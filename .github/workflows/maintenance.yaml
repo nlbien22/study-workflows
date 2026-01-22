@@ -1,0 +1,108 @@
+name: Complex Workflow Automation Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      simulate_fail_at:
+        description: 'Chọn Job muốn giả lập lỗi (job1, job2...)'
+        required: false
+        default: 'none'
+        type: choice
+        options:
+          - none
+          - job1
+          - job2
+          - job3
+          - job4
+          - job5
+
+jobs:
+  # --- JOB 1: GATEKEEPER ---
+  job1:
+    runs-on: ubuntu-latest
+    outputs:
+      data: ${{ steps.step1.outputs.data }}
+    steps:
+      - id: step1
+        run: |
+          echo "Processing Job 1..."
+          if [[ "${{ inputs.simulate_fail_at }}" == "job1" ]]; then exit 1; fi
+          echo "data='Data from Job 1'" >> $GITHUB_OUTPUT
+
+  # --- CHAIN JOBS (2 -> 3 -> 4 -> 5) ---
+  job2:
+    needs: job1
+    runs-on: ubuntu-latest
+    outputs:
+      data: ${{ steps.step2.outputs.data }}
+    steps:
+      - id: step2
+        run: |
+          echo "Previous data: ${{ needs.job1.outputs.data }}"
+          if [[ "${{ inputs.simulate_fail_at }}" == "job2" ]]; then exit 1; fi
+          echo "data='Data from Job 2'" >> $GITHUB_OUTPUT
+
+  job3:
+    needs: job2
+    runs-on: ubuntu-latest
+    outputs:
+      data: ${{ steps.step3.outputs.data }}
+    steps:
+      - id: step3
+        run: |
+          if [[ "${{ inputs.simulate_fail_at }}" == "job3" ]]; then exit 1; fi
+          echo "data='Data from Job 3'" >> $GITHUB_OUTPUT
+
+  job4:
+    needs: job3
+    runs-on: ubuntu-latest
+    outputs:
+      data: ${{ steps.step4.outputs.data }}
+    steps:
+      - run: |
+          if [[ "${{ inputs.simulate_fail_at }}" == "job4" ]]; then exit 1; fi
+          echo "data='Data from Job 4'" >> $GITHUB_OUTPUT
+
+  job5:
+    needs: job4
+    runs-on: ubuntu-latest
+    outputs:
+      data: ${{ steps.step5.outputs.data }}
+    steps:
+      - run: |
+          if [[ "${{ inputs.simulate_fail_at }}" == "job5" ]]; then exit 1; fi
+          echo "data='Data from Job 5'" >> $GITHUB_OUTPUT
+
+  # --- JOB 6: ALWAYS RUN (UNLESS JOB 1 FAILS) ---
+  job6:
+    runs-on: ubuntu-latest
+    # Quan trọng: Liệt kê TẤT CẢ các job để truy cập outputs của job bất kỳ
+    needs: [job1, job2, job3, job4, job5]
+    # Logic: Luôn chạy, NHƯNG phải đảm bảo Job 1 thành công
+    if: always() && needs.job1.result == 'success'
+    steps:
+      - name: Determine Latest Data
+        run: |
+          echo "🔍 Analyzing Workflow State..."
+          
+          # Logic tìm kết quả mới nhất (Fallback logic)
+          # Kiểm tra ngược từ 5 -> 1, lấy cái nào success đầu tiên gặp
+          if [ "${{ needs.job5.result }}" == "success" ]; then
+            echo "Using data from Job 5: ${{ needs.job5.outputs.data }}"
+          elif [ "${{ needs.job4.result }}" == "success" ]; then
+            echo "⚠️ Job 5 skipped/failed. Using data from Job 4: ${{ needs.job4.outputs.data }}"
+          elif [ "${{ needs.job3.result }}" == "success" ]; then
+            echo "⚠️ Job 4-5 skipped/failed. Using data from Job 3: ${{ needs.job3.outputs.data }}"
+          elif [ "${{ needs.job2.result }}" == "success" ]; then
+             echo "⚠️ Job 3-5 skipped/failed. Using data from Job 2: ${{ needs.job2.outputs.data }}"
+          else
+             echo "⚠️ Only Job 1 passed. Using data from Job 1: ${{ needs.job1.outputs.data }}"
+          fi
+
+  # --- JOB 7: PARALLEL WITH JOB 6 ---
+  job7:
+    runs-on: ubuntu-latest
+    needs: [job1, job2, job3, job4, job5]
+    if: always() && needs.job1.result == 'success'
+    steps:
+      - run: echo "Job 7 is running independently..."
