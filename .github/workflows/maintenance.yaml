@@ -18,7 +18,7 @@ on:
 
 jobs:
   job0:
-    runs-on: ubuntu-latest
+    runs-on: ${{ (inputs.env_id == 'prd' || inputs.env_id == 'stg') && 'ubuntu-latest' || 'ubuntu-slim' }}
     outputs:
       runner: ${{ steps.set_runner.outputs.runner }}
     steps:
