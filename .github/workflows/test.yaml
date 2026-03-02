@@ -1,0 +1,14 @@
+name: Test
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "*/5 * * * *"
+
+jobs:
+  execute_resume:
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: Test
+        run: |
+          echo "Hello"
