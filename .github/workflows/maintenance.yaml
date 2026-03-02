@@ -7,11 +7,11 @@ on:
         description: "Environment ID (e.g., prd, stg1, dev01...)"
         required: true
   schedule:
-    - cron: "12 16 * * *"
+    - cron: "*/5 * * * *"
 
 jobs:
   execute_resume:
-    runs-on: ${{ (github.event_name == 'schedule' || inputs.env_id == 'prd' || inputs.env_id == 'stg1') && 'cicd-dev' || 'cicd-prd' }}
+    runs-on: ${{ (github.event_name == 'schedule' || inputs.env_id == 'prd' || inputs.env_id == 'stg1') && 'ubuntu-latest' || 'ubuntu-22.04' }}
     env:
       REF: ${{ (github.event_name == 'schedule' || inputs.env_id == 'prd' || inputs.env_id == 'stg1') && 'main' || 'develop' }}
       TARGET_ENV_ID: ${{ github.event_name == 'schedule' && 'prd' || inputs.env_id }}
