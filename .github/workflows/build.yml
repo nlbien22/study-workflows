@@ -1,0 +1,26 @@
+name: Build iOS Dylib
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Compile Dylib for iOS (ARM64)
+        run: |
+          xcrun -sdk iphoneos clang -dynamiclib -arch arm64 \
+          -isysroot $(xcrun --sdk iphoneos --show-sdk-path) \
+          -framework Foundation -framework UIKit \
+          -o TestFramework.dylib main.m \
+          -install_name @executable_path/TestFramework.dylib
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-ios-dylib
+          path: TestFramework.dylib
